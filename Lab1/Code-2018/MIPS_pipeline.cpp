@@ -260,6 +260,7 @@ int main()
     uint cycle=0;
     state.IF.PC=0x00000000;
     state.IF.nop=false;
+    newState.IF.nop=false;
     state.ID.nop=true;
     state.EX.nop=true;
     state.MEM.nop=true;
@@ -281,7 +282,16 @@ int main()
 
         /* --------------------- MEM stage --------------------- */
         if (!state.MEM.nop){
-            cout<<"hello"<<endl;
+            newState.WB.Rs=state.MEM.Rs;
+            newState.WB.Rt=state.MEM.Rt;
+            newState.WB.Wrt_reg_addr=state.MEM.Wrt_reg_addr;
+            newState.WB.wrt_enable=state.MEM.wrt_enable;
+            newState.WB.Wrt_data=state.MEM.ALUresult; //Default to ALU result
+            //Perform Memory Operations
+            if (state.MEM.rd_mem)
+                newState.WB.Wrt_data=myDataMem.readDataMem(state.MEM.ALUresult);
+            else if (state.MEM.wrt_mem)
+                myDataMem.writeDataMem(state.MEM.ALUresult, state.MEM.Store_data);
 
         }
         newState.WB.nop=state.MEM.nop;
@@ -360,6 +370,7 @@ int main()
         /* --------------------- IF stage --------------------- */
         
         if (!state.IF.nop){
+
             newState.ID.Instr=myInsMem.readInstr(state.IF.PC);
             newState.IF.PC=(bitset<32>)(state.IF.PC.to_ulong()+4);
             // If current insturciton is "11111111111111111111111111111111", then break;
@@ -370,15 +381,13 @@ int main()
             }
         }
         newState.ID.nop=state.IF.nop;
+        cout<<state.IF.nop<<endl;
 
-             
-
-        
         // printState(newState, cycle); //print states after executing cycle 0, cycle 1, cycle 2 ... 
         // cout<<"Hello, my name is..."<<endl;
         state = newState; /*The end of the cycle and updates the current state with the values calculated in this cycle */ 
-        cout<<state.IF.nop<<'\t'<<state.ID.nop<<'\t'<<state.EX.nop<<'\t'<<state.MEM.nop<<'\t'<<state.WB.nop<<'\t'<<endl;
-        
+        // cout<<state.IF.nop<<'\t'<<state.ID.nop<<'\t'<<state.EX.nop<<'\t'<<state.MEM.nop<<'\t'<<state.WB.nop<<'\t'<<endl;
+
         if (state.IF.nop && state.ID.nop && state.EX.nop && state.MEM.nop && state.WB.nop){
             cout<<"breaking";
             break;
