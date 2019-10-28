@@ -85,6 +85,8 @@ class INSMem
 {
       public:
           bitset<32> Instruction;
+          // vector<bitset<8> > IMem;
+
           INSMem() // read instruction memory
           {       IMem.resize(MemSize); 
                   ifstream imem;
@@ -100,7 +102,7 @@ class INSMem
                      }
                      
                   }
-                  else cout<<"Unable to open file";
+                  else cout<<"Unable to open Imem file";
                   imem.close();
                      
                   }
@@ -108,7 +110,8 @@ class INSMem
           bitset<32> ReadMemory (bitset<32> ReadAddress) 
               {    
                // implement by you. (Read the byte at the ReadAddress and the following three byte).
-               Instruction = (IMem[ReadAddress.to_ulong()]<<24).to_ulong() + (IMem[ReadAddress.to_ulong()+1]<<16).to_ulong() + (IMem[ReadAddress.to_ulong()+2]<<8).to_ulong() + (IMem[ReadAddress.to_ulong()+3]).to_ulong();
+               // cout<<(IMem[0].to_ulong()<<24);
+               Instruction = (bitset <32>) (((IMem[ReadAddress.to_ulong()]).to_ulong()<<24) + ((IMem[ReadAddress.to_ulong()+1]).to_ulong()<<16) + ((IMem[ReadAddress.to_ulong()+2]).to_ulong()<<8) + ((IMem[ReadAddress.to_ulong()+3]).to_ulong()));
                return Instruction;     
               }     
       
@@ -136,7 +139,7 @@ class DataMem
                         i++;
                        }
                   }
-                  else cout<<"Unable to open file";
+                  else cout<<"Unable to open Dmem file";
                   dmem.close();
           
           }  
@@ -146,7 +149,8 @@ class DataMem
                // implement by you.
               bitset<8> putByte;
               if ((bool)readmem.to_ulong())
-                readdata = (DMem[Address.to_ulong()]<<24).to_ulong() + (DMem[Address.to_ulong()+1]<<16).to_ulong() + (DMem[Address.to_ulong()+2]<<8).to_ulong() + (DMem[Address.to_ulong()+3]).to_ulong();
+                readdata = (bitset <32>) (((DMem[Address.to_ulong()]).to_ulong()<<24) + ((DMem[Address.to_ulong()+1]).to_ulong()<<16) + ((DMem[Address.to_ulong()+2]).to_ulong()<<8) + ((DMem[Address.to_ulong()+3]).to_ulong()));
+
               else if ((bool) writemem.to_ulong())
                 for (int i=3; i>=0; i--)
                 {
@@ -169,7 +173,7 @@ class DataMem
                        }
                      
                   }
-                  else cout<<"Unable to open file";
+                  else cout<<"Unable to open Dmem file";
                   dmemout.close();
                
                }             
@@ -179,26 +183,103 @@ class DataMem
       
 };  
 
+void splitIns (bitset <32> inst, bitset <5> &rs, bitset <5> &rt, bitset <5> &rd, bitset <16> &imm, bitset <26> &addr)
+{
+  rs=(bitset <5>) (inst.to_ulong() >> 21);
+  rt=(bitset <5>) (inst.to_ulong() >> 16);
+  rd=(bitset <5>) (inst.to_ulong() >> 11);
+  imm=(bitset <16>) (inst.to_ulong());
+  addr=(bitset <26>) (inst.to_ulong());
 
-   
+}
+void insDecode (bitset <32> inst, bool & rtype, bool & itype, bool &jtype, bool & isstore, bool & isload, bool & isbranch, bool &WE, bitset <6> & funct)
+{ rtype = itype = jtype = isstore = isload = isbranch = WE = isbranch = 0;
+  bitset <6> opcode = (bitset <6>) (inst.to_ulong() >> 25);
+  // cout<<opcode<<endl;
+  if (opcode.to_ulong()==0x00)
+    {
+      rtype=1;
+      funct=(bitset <6>) inst.to_ulong();
+    }
+  else if (opcode.to_ulong()==0x02)
+    jtype=1;
+  else if (opcode.to_ulong()==0x2B)
+    isstore=1;
+  else if (opcode.to_ulong()==0x23)
+    isload=1;
+  if (opcode.to_ulong()==0x04)
+    isbranch=1;
+  if (!jtype && !rtype)
+    {
+      itype=1;
+      funct=(bitset <6>) 0x21;
+    } 
+  if (isstore || isbranch || jtype)
+    WE=0;
+  else
+    WE=1;
+
+}
+
 int main()
 {
     RF myRF;
     ALU myALU;
     INSMem myInsMem;
     DataMem myDataMem;
-    bitset <32> inst;
+    bitset <32> inst, immEx;
     bitset <32> PC = (bitset <32>) 0x00000000;
-    while (1)
+    bitset <5> rs, rt, rd;
+    bitset <16> imm;
+    bitset <26> addr;
+    bool itype, rtype, jtype, isstore, isload, isbranch, WE;
+    bitset <6> funct;
+    bitset <32> wrData;
+
+  while (1)
 	{
     // Fetch
+
     inst=myInsMem.ReadMemory(PC);
     PC=PC.to_ulong()+4;
+    cout<<inst<<endl;
+
     // If current insturciton is "11111111111111111111111111111111", then break;
     if (inst.to_ulong()==0xFFFFFFFF)
-      break;
+      {
+        cout<<"oknotok";
+        break;
+      }
+    splitIns (inst, rs, rt, rd, imm, addr);
+    insDecode (inst, rtype, itype, jtype, isstore, isload, isbranch, WE, funct);
+    if (jtype)
+      {
+        PC=(bitset<32>) (((PC.to_ulong() + 4) | 0xF0000000) + (addr.to_ulong()<<2));
+        continue;
+      }
+    myRF.ReadWrite(rs, rd, rt, wrData, (bitset<1>) 0);
+    if (rtype)
+      wrData=myALU.ALUOperation((bitset<3>) funct.to_ulong(), myRF.ReadData1, myRF.ReadData2);
     else
+    { immEx=(bitset<32>) imm.to_ulong();
+      if (imm.to_ulong() & 0x8000 !=0)
+        immEx=(bitset<32>) (immEx.to_ulong() | 0xFFFF0000);
+      wrData=myALU.ALUOperation((bitset<3>) funct.to_ulong(), myRF.ReadData1, immEx);
+    }
+    if (isbranch)
+    {
+      if (myRF.ReadData1 == myRF.ReadData2)
+      { 
+        PC=myALU.ALUresult;
+        continue;
+      }
+    }
+    if (isstore)
+      myDataMem.MemoryAccess (myALU.ALUresult, myRF.ReadData2, (bitset<1>) 1 , (bitset<1>) 0);
+    else if (isload)
+      wrData=myDataMem.MemoryAccess (myALU.ALUresult, myRF.ReadData2, (bitset<1>) 0 , (bitset<1>) 1);
 
+    myRF.ReadWrite(rs, rd, rt, wrData, (bitset<1>) WE);
 		// decode(Read RF)
 		
 		// Execute
@@ -206,11 +287,10 @@ int main()
 		// Read/Write Mem
 		
 		// Write back to RF
-		
-    myRF.OutputRF(); // dump RF;    
-    }
-        myDataMem.OutputDataMem(); // dump data mem
-      
-        return 0;
+  myRF.OutputRF(); // dump RF;
+    
+  }
+  myDataMem.OutputDataMem(); // dump data mem
+  return 0;
         
 }

@@ -1,0 +1,8 @@
+# depslib dependency file v1.0
+1571979918 source:e:\study2\csa\lab0\mips.cpp
+	<iostream>
+	<string>
+	<vector>
+	<bitset>
+	<fstream>
+

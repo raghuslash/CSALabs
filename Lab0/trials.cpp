@@ -14,7 +14,7 @@ using namespace std;
 bitset<32> IMem[100];
 bitset<32> ReadAddress=0x00000001;
 bitset<8> Inst[4]={0xC0,0xFF,0xEE,0x00};
-          int main() 
+          int test()
               {bitset<32> Instruction;
 
                // implement by you. (Read the byte at the ReadAddress and the following three byte).
