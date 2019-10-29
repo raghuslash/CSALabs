@@ -194,7 +194,7 @@ void splitIns (bitset <32> inst, bitset <5> &rs, bitset <5> &rt, bitset <5> &rd,
 }
 void insDecode (bitset <32> inst, bool & rtype, bool & itype, bool &jtype, bool & isstore, bool & isload, bool & isbranch, bool &WE, bitset <6> & funct)
 { rtype = itype = jtype = isstore = isload = isbranch = WE = isbranch = 0;
-  bitset <6> opcode = (bitset <6>) (inst.to_ulong() >> 25);
+  bitset <6> opcode = (bitset <6>) (inst.to_ulong() >> 26);
   // cout<<opcode<<endl;
   if (opcode.to_ulong()==0x00)
     {

@@ -257,14 +257,20 @@ int main()
     INSMem myInsMem;
     DataMem myDataMem;
 	stateStruct state, newState;
+    //Initializations
     uint cycle=0;
     state.IF.PC=0x00000000;
     state.IF.nop=false;
     newState.IF.nop=false;
     state.ID.nop=true;
+    newState.ID.nop=true;
     state.EX.nop=true;
+    newState.EX.nop=true;
     state.MEM.nop=true;
+    newState.MEM.nop=true;
     state.WB.nop=true;
+    newState.WB.nop=true;
+
 
     //Temporary variables
     bitset <6> opcode;
@@ -277,26 +283,52 @@ int main()
 
         /* --------------------- WB stage --------------------- */
         if (!state.WB.nop){
-
+            if (state.WB.wrt_enable){
+                myRF.writeRF(state.WB.Wrt_reg_addr, state.WB.Wrt_data);
+                // cout<<"Storing "<<state.WB.Wrt_data<<" in register "<<state.WB.Wrt_reg_addr.to_ulong()<<endl;
+            }
         }
 
         /* --------------------- MEM stage --------------------- */
-        if (!state.MEM.nop){
-            newState.WB.Rs=state.MEM.Rs;
-            newState.WB.Rt=state.MEM.Rt;
-            newState.WB.Wrt_reg_addr=state.MEM.Wrt_reg_addr;
-            newState.WB.wrt_enable=state.MEM.wrt_enable;
-            newState.WB.Wrt_data=state.MEM.ALUresult; //Default to ALU result
-            //Perform Memory Operations
-            if (state.MEM.rd_mem)
-                newState.WB.Wrt_data=myDataMem.readDataMem(state.MEM.ALUresult);
-            else if (state.MEM.wrt_mem)
-                myDataMem.writeDataMem(state.MEM.ALUresult, state.MEM.Store_data);
-
-        }
+        //Forward Control and Data Signals
+        newState.WB.Rs=state.MEM.Rs;
+        newState.WB.Rt=state.MEM.Rt;
+        newState.WB.Wrt_reg_addr=state.MEM.Wrt_reg_addr;
+        newState.WB.wrt_enable=state.MEM.wrt_enable;
         newState.WB.nop=state.MEM.nop;
 
+        if (!state.MEM.nop){
+
+            //Implement Forwarding
+            if (state.MEM.Rt == state.WB.Wrt_reg_addr && state.WB.wrt_enable)
+                state.MEM.Store_data=state.WB.Wrt_data;
+            
+            newState.WB.Wrt_data=state.MEM.ALUresult; //Default to ALU result
+            //Perform Memory Operations
+            if (state.MEM.rd_mem){
+                newState.WB.Wrt_data=myDataMem.readDataMem(state.MEM.ALUresult);
+                // cout<<"Loading"<<endl;
+            }
+            else if (state.MEM.wrt_mem){
+                cout<<"Storing "<<state.MEM.Store_data<<" at "<<state.MEM.ALUresult<<endl;
+                myDataMem.writeDataMem(state.MEM.ALUresult, state.MEM.Store_data);
+                
+            }
+        }
+
         /* --------------------- EX stage --------------------- */
+        //Implement fowrwarding
+        //MEM to EX
+        // if (state.EX.Rs == state.WB.Wrt_reg_addr && state.WB.wrt_enable)
+        //     state.EX.Read_data1=state.WB.Wrt_data;
+        // if (state.EX.Rt == state.WB.Wrt_reg_addr && state.WB.wrt_enable)
+        //     state.EX.Read_data2=state.WB.Wrt_data;
+        //EX to EX
+        if (state.EX.Rs == state.MEM.Rt && state.MEM.wrt_enable)
+            state.EX.Read_data1=state.MEM.ALUresult;
+        if (state.EX.Rt == state.MEM.Rt && state.MEM.wrt_enable)
+            state.EX.Read_data2=state.MEM.ALUresult;
+
         if (!state.EX.nop){
             if (state.EX.is_I_type){
                 immEx=(bitset<32>)(state.EX.Imm.to_ulong());
@@ -304,25 +336,32 @@ int main()
                     immEx=(bitset<32>) (immEx.to_ulong() | 0xFFFF0000);
                 newState.MEM.ALUresult=(bitset <32>)(state.EX.Read_data1.to_ulong()+immEx.to_ulong());
             }
-            else if (state.EX.alu_op)
+            else if (state.EX.alu_op){
+                // cout<<"Adding "<<state.EX.Read_data1<<" and "<<state.EX.Read_data2<<endl;
                 newState.MEM.ALUresult=(bitset <32>)(state.EX.Read_data1.to_ulong()+state.EX.Read_data2.to_ulong());
+            }
             else{
                     newState.MEM.ALUresult=(bitset <32>)(state.EX.Read_data1.to_ulong()-state.EX.Read_data2.to_ulong());
                 }
-            // cout<<state.EX.Rs<<'\t'<<state.EX.Rt<<endl;
-            newState.MEM.Store_data=state.EX.Read_data2; //IF SW, rt contents are written
-            newState.MEM.Rs=state.EX.Rs;
-            newState.MEM.Rt=state.EX.Rt;
-            newState.MEM.Wrt_reg_addr=state.EX.Wrt_reg_addr;
-            newState.MEM.rd_mem=state.EX.rd_mem;
-            newState.MEM.wrt_mem=state.EX.wrt_mem;
-            newState.MEM.wrt_enable=state.EX.wrt_enable;
-            
-        }
+            }
+
+        //Forward Control and Data Signals
+        newState.MEM.Store_data=state.EX.Read_data2; //IF SW, rt contents are written
+        newState.MEM.Rs=state.EX.Rs;
+        newState.MEM.Rt=state.EX.Rt;
+        newState.MEM.Wrt_reg_addr=state.EX.Wrt_reg_addr;
+        newState.MEM.rd_mem=state.EX.rd_mem;
+        newState.MEM.wrt_mem=state.EX.wrt_mem;
+        newState.MEM.wrt_enable=state.EX.wrt_enable;
         newState.MEM.nop=state.EX.nop;
 
         /* --------------------- ID stage --------------------- */
-        
+        //Set Critical Control bits to safe values
+        //Forward Control and Data Signals
+        newState.EX.wrt_mem=false;
+        newState.EX.wrt_enable=false;
+        newState.EX.nop=state.ID.nop;
+
         if (!state.ID.nop){
 
             //Split  the Instruction
@@ -331,7 +370,6 @@ int main()
             rt=(bitset <5>) (state.ID.Instr.to_ulong() >> 16);
             newState.EX.Rt=rt;
             rd=(bitset <5>) (state.ID.Instr.to_ulong() >> 11);
-            newState.EX.Wrt_reg_addr=rd;
 
             newState.EX.Imm=(bitset <16>) (state.ID.Instr.to_ulong());
 
@@ -339,32 +377,31 @@ int main()
             newState.EX.Read_data1=myRF.readRF(rs);
             newState.EX.Read_data2=myRF.readRF(rt);
 
-            //Calculate Control bits
+            newState.EX.is_I_type=true; //Default to Itype
+            newState.EX.Wrt_reg_addr=rt; //Defalt to rt
             newState.EX.alu_op=true; //Default to add
             newState.EX.rd_mem=false;
-            newState.EX.wrt_mem=false;
-            newState.EX.wrt_enable=true; //Default to write enable
-            newState.EX.is_I_type=true; //Default to Itype
-            opcode=(bitset <6>) (state.ID.Instr.to_ulong() >> 25);
-            if (opcode.to_ulong()==0x00){ //if Rtype
-                  newState.EX.is_I_type=false;
-                  if (((bitset <6>) state.ID.Instr.to_ulong()).to_ulong()==3)
-                    newState.EX.alu_op=false;
 
+            opcode=(bitset <6>) (state.ID.Instr.to_ulong() >> 26);
+            if (opcode.to_ulong()==0x00){ //if Rtype
+                // cout<<"Rtype"<<endl;
+                newState.EX.is_I_type=false;
+                if (((bitset <6>) state.ID.Instr.to_ulong()).to_ulong()==3)
+                    newState.EX.alu_op=false;
+                newState.EX.wrt_enable=true;
+                newState.EX.Wrt_reg_addr=rd;
             }
-            else if (opcode.to_ulong()==0x23) //if Load Word
-                newState.EX.wrt_mem=true;
-            else if (opcode.to_ulong()==0x2B){//if Store Word
+            else if (opcode.to_ulong()==0x23){ //if Load Word
                 newState.EX.rd_mem=true;
-                newState.EX.wrt_enable=false;
+                newState.EX.wrt_enable=true;
+                // cout<<"LoadW"<<endl;
             }
-            else if (opcode.to_ulong()==0x04){//if beq
-                newState.EX.wrt_enable=false;
-                newState.EX.alu_op=false;
+            else if (opcode.to_ulong()==0x2B){//if Store Word
+                newState.EX.wrt_mem=true;
+                // cout<<"StoreW"<<endl;
             }
-                
+            
         }
-        newState.EX.nop=state.ID.nop;
 
         
         /* --------------------- IF stage --------------------- */
@@ -381,18 +418,16 @@ int main()
             }
         }
         newState.ID.nop=state.IF.nop;
-        cout<<state.IF.nop<<endl;
 
-        // printState(newState, cycle); //print states after executing cycle 0, cycle 1, cycle 2 ... 
-        // cout<<"Hello, my name is..."<<endl;
+        printState(newState, cycle); //print states after executing cycle 0, cycle 1, cycle 2 ... 
         state = newState; /*The end of the cycle and updates the current state with the values calculated in this cycle */ 
-        // cout<<state.IF.nop<<'\t'<<state.ID.nop<<'\t'<<state.EX.nop<<'\t'<<state.MEM.nop<<'\t'<<state.WB.nop<<'\t'<<endl;
-
         if (state.IF.nop && state.ID.nop && state.EX.nop && state.MEM.nop && state.WB.nop){
-            cout<<"breaking";
+            cout<<"Breaking";
             break;
         }
+        cout<<"Cycle "<<cycle<<endl;
         loop--;
+        cycle++;
         	
     }
     
