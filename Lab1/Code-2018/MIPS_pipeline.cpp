@@ -303,7 +303,7 @@ int main()
         if (!state.MEM.nop){
 
             //Implement Forwarding
-            if (state.MEM.Rt == state.WB.Wrt_reg_addr && state.WB.wrt_enable)
+            if (state.MEM.Rt == state.WB.Wrt_reg_addr && state.WB.wrt_enable && !state.WB.nop)
                 state.MEM.Store_data=state.WB.Wrt_data;
             
             //Perform Memory Operations
