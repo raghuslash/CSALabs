@@ -321,15 +321,15 @@ int main()
         /* --------------------- EX stage --------------------- */
         //Implement fowrwarding
         // MEM to EX
-        if (state.EX.Rs == state.WB.Wrt_reg_addr && state.WB.wrt_enable)
+        if (state.EX.Rs == state.WB.Wrt_reg_addr && state.WB.wrt_enable && !state.WB.nop)
             state.EX.Read_data1=state.WB.Wrt_data;
-        if (state.EX.Rt == state.WB.Wrt_reg_addr && state.WB.wrt_enable)
+        if (state.EX.Rt == state.WB.Wrt_reg_addr && state.WB.wrt_enable && !state.WB.nop)
             state.EX.Read_data2=state.WB.Wrt_data;
         
         // EX to EX
-        if (state.EX.Rs == state.MEM.Rt && state.MEM.wrt_enable)
+        if (state.EX.Rs == state.MEM.Rt && state.MEM.wrt_enable && !state.MEM.nop)
             state.EX.Read_data1=state.MEM.ALUresult;
-        if (state.EX.Rt == state.MEM.Rt && state.MEM.wrt_enable)
+        if (state.EX.Rt == state.MEM.Rt && state.MEM.wrt_enable && !state.MEM.nop)
             state.EX.Read_data2=state.MEM.ALUresult;
 
         if (!state.EX.nop){
@@ -341,12 +341,13 @@ int main()
                 // cout<<newState.MEM.ALUresult<<endl;
             }
             else if (state.EX.alu_op){
-                // cout<<"Adding "<<state.EX.Read_data1<<" and "<<state.EX.Read_data2<<endl;
+                cout<<"Adding "<<state.EX.Read_data1<<" and "<<state.EX.Read_data2<<endl;
                 newState.MEM.ALUresult=(bitset <32>)(state.EX.Read_data1.to_ulong()+state.EX.Read_data2.to_ulong());
-            cout<<state.EX.Read_data1<<'\t'<<state.EX.Read_data2<<endl;
+                cout<<state.EX.Read_data1<<'\t'<<state.EX.Read_data2<<endl;
 
             }
             else{
+                    cout<<"Subbing "<<state.EX.Read_data1<<" and "<<state.EX.Read_data2<<endl;
                     newState.MEM.ALUresult=(bitset <32>)(state.EX.Read_data1.to_ulong()-state.EX.Read_data2.to_ulong());
                 }
         }
@@ -383,7 +384,7 @@ int main()
             //Read the Registers
             newState.EX.Read_data1=myRF.readRF(rs);
             newState.EX.Read_data2=myRF.readRF(rt);
-            cout<<rt<<' '<<newState.EX.Read_data2<<endl;
+            // cout<<rt<<' '<<newState.EX.Read_data2<<endl;
 
             newState.EX.is_I_type=true; //Default to Itype
             newState.EX.Wrt_reg_addr=rt; //Defalt to rt
@@ -394,7 +395,7 @@ int main()
             if (opcode.to_ulong()==0x00){ //if Rtype
                 // cout<<"Rtype"<<endl;
                 newState.EX.is_I_type=false;
-                if (((bitset <6>) state.ID.Instr.to_ulong()).to_ulong()==3)
+                if (((bitset <3>) state.ID.Instr.to_ulong()).to_ulong()==3)
                     newState.EX.alu_op=false;
                 newState.EX.wrt_enable=true;
                 newState.EX.Wrt_reg_addr=rd;
