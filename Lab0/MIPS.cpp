@@ -270,7 +270,7 @@ int main()
     {
       if (myRF.ReadData1 == myRF.ReadData2)
       { 
-        PC=myALU.ALUresult;
+        // PC=myALU.ALUresult;
         continue;
       }
     }

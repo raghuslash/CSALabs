@@ -275,8 +275,10 @@ int main()
     //Temporary variables
     bitset <6> opcode;
     bitset <5> rs, rt, rd;
-    bitset <32> immEx;
+    bitset <32> immEx, bneqAddr;
     bool stall=false;
+    bool branch=false;
+
 
     uint loop=500;
 
@@ -302,7 +304,7 @@ int main()
 
         if (!state.MEM.nop){
 
-            //Implement Forwarding
+            //Implement Forwarding MEM to MEM
             if (state.MEM.Rt == state.WB.Wrt_reg_addr && state.WB.wrt_enable && !state.WB.nop)
                 state.MEM.Store_data=state.WB.Wrt_data;
             
@@ -337,17 +339,16 @@ int main()
                 immEx=(bitset<32>)(state.EX.Imm.to_ulong());
                 if (state.EX.Imm.to_ulong() & 0x8000 !=0)
                     immEx=(bitset<32>) (immEx.to_ulong() | 0xFFFF0000);
-                newState.MEM.ALUresult=(bitset <32>)(state.EX.Read_data1.to_ulong()+immEx.to_ulong());
+                newState.MEM.ALUresult=(bitset <32>)(state.EX.Read_data1.to_ulong()+(int)immEx.to_ulong());
                 // cout<<newState.MEM.ALUresult<<endl;
             }
             else if (state.EX.alu_op){
-                cout<<"Adding "<<state.EX.Read_data1<<" and "<<state.EX.Read_data2<<endl;
+                // cout<<"Adding "<<state.EX.Read_data1<<" and "<<state.EX.Read_data2<<endl;
                 newState.MEM.ALUresult=(bitset <32>)(state.EX.Read_data1.to_ulong()+state.EX.Read_data2.to_ulong());
-                cout<<state.EX.Read_data1<<'\t'<<state.EX.Read_data2<<endl;
 
             }
             else{
-                    cout<<"Subbing "<<state.EX.Read_data1<<" and "<<state.EX.Read_data2<<endl;
+                    // cout<<"Subbing "<<state.EX.Read_data1<<" and "<<state.EX.Read_data2<<endl;
                     newState.MEM.ALUresult=(bitset <32>)(state.EX.Read_data1.to_ulong()-state.EX.Read_data2.to_ulong());
                 }
         }
@@ -372,6 +373,7 @@ int main()
 
         if (!state.ID.nop){
 
+            opcode=(bitset <6>) (state.ID.Instr.to_ulong() >> 26);
             //Split  the Instruction
             rs=(bitset <5>) (state.ID.Instr.to_ulong() >> 21);
             newState.EX.Rs=rs;
@@ -391,8 +393,23 @@ int main()
             newState.EX.alu_op=true; //Default to add
             newState.EX.rd_mem=false;
 
-            opcode=(bitset <6>) (state.ID.Instr.to_ulong() >> 26);
-            if (opcode.to_ulong()==0x00){ //if Rtype
+            //Check for BNEQ
+            if (opcode.to_ulong()==0x04){
+                if (newState.EX.Read_data1.to_ulong() != newState.EX.Read_data2.to_ulong()){
+                    branch=true;
+                    bneqAddr=(bitset<32>)(newState.EX.Imm.to_ulong()<<2);
+                    // cout<<"Before: "<<bneqAddr<<endl;
+                    if ((bneqAddr.to_ulong() & 0x20000) !=0){
+                        bneqAddr=(bitset<32>) (bneqAddr.to_ulong() | 0xFFFE0000);
+                    // cout<<"After: "<<(int)bneqAddr.to_ulong()<<endl;
+                    }
+                    bneqAddr=(bitset <32>)(state.IF.PC.to_ulong() + (int)bneqAddr.to_ulong()); //PC is already PC + 4
+                    // cout<<"Need to Take branch... from "<<state.IF.PC.to_ulong()<<endl;
+                }
+            }
+
+
+            else if (opcode.to_ulong()==0x00){ //if Rtype
                 // cout<<"Rtype"<<endl;
                 newState.EX.is_I_type=false;
                 if (((bitset <3>) state.ID.Instr.to_ulong()).to_ulong()==3)
@@ -413,7 +430,6 @@ int main()
             //Check Condition for Stalling
             if (state.EX.rd_mem && !newState.EX.is_I_type){
                 if (newState.EX.Rs == state.EX.Wrt_reg_addr || newState.EX.Rt == state.EX.Wrt_reg_addr){
-                    cout<<"Yea - ";
                     stall=true;
                 }
             }
@@ -435,20 +451,29 @@ int main()
         }
         newState.ID.nop=state.IF.nop;
 
-
+        //Implement Stall
         if (stall){
 
             newState.ID=state.ID;
             newState.IF=state.IF;
             newState.EX.nop=true;
-            cout<<"Trying to stall "<<stall<<endl;
+            cout<<"Stalling..."<<stall<<endl;
             stall=false;
+        }
+
+        //Implement BEQ
+
+        if (branch){
+            cout<<"Branching... to "<<bneqAddr.to_ulong()<<endl;
+            newState.IF.PC=bneqAddr;
+            newState.ID.nop=true;
+            branch=false;
         }
 
         printState(newState, cycle); //print states after executing cycle 0, cycle 1, cycle 2 ... 
         state = newState; /*The end of the cycle and updates the current state with the values calculated in this cycle */ 
         if (state.IF.nop && state.ID.nop && state.EX.nop && state.MEM.nop && state.WB.nop){
-            cout<<"Breaking";
+            cout<<"Ending...";
             break;
         }
         loop--;
