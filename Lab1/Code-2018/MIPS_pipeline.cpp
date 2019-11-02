@@ -257,6 +257,8 @@ int main()
     INSMem myInsMem;
     DataMem myDataMem;
 	stateStruct state, newState;
+
+
     //Initializations
     uint cycle=0;
     state.IF.PC=0x00000000;
@@ -270,6 +272,68 @@ int main()
     newState.MEM.nop=true;
     state.WB.nop=true;
     newState.WB.nop=true;
+
+
+    //Reset All Signals
+    newState.ID.Instr=0x00000000;
+
+    newState.EX.is_I_type=false;
+    newState.EX.rd_mem=false;
+    newState.EX.wrt_mem=false;
+    newState.EX.alu_op=true;
+    newState.EX.wrt_enable=false;
+
+    newState.EX.Read_data1=0x00000000;
+    newState.EX.Read_data2=0x00000000;
+    newState.EX.Imm=0x0000;
+    newState.EX.Rs=0b00000;
+    newState.EX.Rt=0b00000;
+    newState.EX.Wrt_reg_addr=0b00000;
+
+    newState.MEM.ALUresult=0x00000000;
+    newState.MEM.Store_data=0x00000000;
+    newState.MEM.Rs=0b00000;
+    newState.MEM.Rt=0b00000;
+    newState.MEM.Wrt_reg_addr=0b00000;
+    newState.MEM.rd_mem=false;
+    newState.MEM.wrt_mem=false;
+    newState.MEM.wrt_enable=false;
+
+    newState.WB.Wrt_data=0x00000000;
+    newState.WB.Rs=0b00000;
+    newState.WB.Rt=0b00000;
+    newState.WB.Wrt_reg_addr=0b00000;
+    newState.WB.wrt_enable=false;
+
+    state.ID.Instr=0x00000000;
+
+    state.EX.is_I_type=false;
+    state.EX.rd_mem=false;
+    state.EX.wrt_mem=false;
+    state.EX.alu_op=true;
+    state.EX.wrt_enable=false;
+
+    state.EX.Read_data1=0x00000000;
+    state.EX.Read_data2=0x00000000;
+    state.EX.Imm=0x0000;
+    state.EX.Rs=0b00000;
+    state.EX.Rt=0b00000;
+    state.EX.Wrt_reg_addr=0b00000;
+
+    state.MEM.ALUresult=0x00000000;
+    state.MEM.Store_data=0x00000000;
+    state.MEM.Rs=0b00000;
+    state.MEM.Rt=0b00000;
+    state.MEM.Wrt_reg_addr=0b00000;
+    state.MEM.rd_mem=false;
+    state.MEM.wrt_mem=false;
+    state.MEM.wrt_enable=false;
+
+    state.WB.Wrt_data=0x00000000;
+    state.WB.Rs=0b00000;
+    state.WB.Rt=0b00000;
+    state.WB.Wrt_reg_addr=0b00000;
+    state.WB.wrt_enable=false;
 
 
     //Temporary variables
@@ -311,7 +375,7 @@ int main()
             //Perform Memory Operations
             if (state.MEM.rd_mem){
                 newState.WB.Wrt_data=myDataMem.readDataMem(state.MEM.ALUresult);
-                // cout<<"Loading..." <<newState.WB.Wrt_data<<endl;
+                cout<<"Loading from - " <<state.MEM.ALUresult<<endl;
             }
             else if (state.MEM.wrt_mem){
                 // cout<<"Storing "<<state.MEM.Store_data<<" at "<<state.MEM.ALUresult<<endl;
@@ -441,13 +505,16 @@ int main()
         if (!state.IF.nop){
 
             newState.ID.Instr=myInsMem.readInstr(state.IF.PC);
-            newState.IF.PC=(bitset<32>)(state.IF.PC.to_ulong()+4);
             // If current insturciton is "11111111111111111111111111111111", then break;
             if (newState.ID.Instr.to_ulong()==0xFFFFFFFF){
                 cout<<"oknotok"<<endl;
                 newState.IF.nop=true; //Set to terminate program when the nop propogates
                 state.IF.nop=true;
             }
+            else{
+                newState.IF.PC=(bitset<32>)(state.IF.PC.to_ulong()+4);
+            }
+
         }
         newState.ID.nop=state.IF.nop;
 
