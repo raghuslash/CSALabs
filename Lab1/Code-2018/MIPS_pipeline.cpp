@@ -339,18 +339,23 @@ int main()
     //Temporary variables
     bitset <6> opcode;
     bitset <5> rs, rt, rd;
-    bitset <32> immEx, bneqAddr;
+    bitset <32> immEx, bneqAddr, jaddr;
+    // bitset <26> addr;
     bool stall=false;
     bool branch=false;
+    bool jump=false;
 
 
     uint loop=500;
+    uint valid=0;
+    uint daccess=0;
 
     while (loop) {
         cout<<"Cycle "<<cycle<<endl;
         /* --------------------- WB stage --------------------- */
         if (!state.WB.nop){
             if (state.WB.wrt_enable){
+                valid++;
                 myRF.writeRF(state.WB.Wrt_reg_addr, state.WB.Wrt_data);
                 // cout<<"Storing "<<state.WB.Wrt_data<<" in register "<<state.WB.Wrt_reg_addr.to_ulong()<<endl;
             }
@@ -374,10 +379,12 @@ int main()
             
             //Perform Memory Operations
             if (state.MEM.rd_mem){
+                daccess++;
                 newState.WB.Wrt_data=myDataMem.readDataMem(state.MEM.ALUresult);
                 cout<<"Loading from - " <<state.MEM.ALUresult<<endl;
             }
             else if (state.MEM.wrt_mem){
+                daccess++;
                 // cout<<"Storing "<<state.MEM.Store_data<<" at "<<state.MEM.ALUresult<<endl;
                 myDataMem.writeDataMem(state.MEM.ALUresult, state.MEM.Store_data);
                 
@@ -457,8 +464,14 @@ int main()
             newState.EX.alu_op=true; //Default to add
             newState.EX.rd_mem=false;
 
+
+            if (opcode.to_ulong()==0x02){
+                jump=true;
+                jaddr=(bitset <32>)((state.IF.PC.to_ulong() | 0xF0000000) + (state.ID.Instr.to_ulong()<<2));
+            }
+
             //Check for BNEQ
-            if (opcode.to_ulong()==0x04){
+            else if (opcode.to_ulong()==0x04){
                 if (newState.EX.Read_data1.to_ulong() != newState.EX.Read_data2.to_ulong()){
                     branch=true;
                     bneqAddr=(bitset<32>)(newState.EX.Imm.to_ulong()<<2);
@@ -537,10 +550,19 @@ int main()
             branch=false;
         }
 
+        //Implement Jump
+        if (jump){
+            cout<<"Jumping to "<<jaddr.to_ulong()<<endl;
+            newState.IF.PC=jaddr;
+            newState.ID.nop=true;
+            jump=false;
+        }
+
         printState(newState, cycle); //print states after executing cycle 0, cycle 1, cycle 2 ... 
+
         state = newState; /*The end of the cycle and updates the current state with the values calculated in this cycle */ 
         if (state.IF.nop && state.ID.nop && state.EX.nop && state.MEM.nop && state.WB.nop){
-            cout<<"Ending...";
+            cout<<"Ending..."<<endl;
             break;
         }
         loop--;
@@ -551,5 +573,12 @@ int main()
     myRF.outputRF(); // dump RF;	
 	myDataMem.outputDataMem(); // dump data mem 
 	
+    cout<<"STATS - ";
+    cout<<"Number of cycles: "<<cycle<<endl;
+    cout<<"Total memory access instructions: "<<daccess<<endl;
+    cout<<"Fraction of instructions accessing memory: "<<daccess/(float)cycle<<endl;
+    cout<<"Total number of valid instructions: "<<valid<<endl;
+    cout<<"IPC: "<<valid/(float)cycle<<endl;
+
 	return 0;
 }
