@@ -489,8 +489,13 @@ int main()
             else if (opcode.to_ulong()==0x00){ //if Rtype
                 // cout<<"Rtype"<<endl;
                 newState.EX.is_I_type=false;
-                if (((bitset <3>) state.ID.Instr.to_ulong()).to_ulong()==3)
+                if (((bitset <3>) state.ID.Instr.to_ulong()).to_ulong()==3){
                     newState.EX.alu_op=false;
+                    if ((state.EX.Wrt_reg_addr.to_ulong() == newState.EX.Read_data1.to_ulong() || state.EX.Wrt_reg_addr.to_ulong() == newState.EX.Read_data2.to_ulong()) && !state.EX.nop && state.EX.wrt_enable)
+                        stall=true;
+                    else if ((state.MEM.Wrt_reg_addr.to_ulong() == newState.EX.Read_data1.to_ulong() || state.MEM.Wrt_reg_addr.to_ulong() == newState.EX.Read_data2.to_ulong()) && !state.MEM.nop && state.MEM.wrt_enable)
+                         stall=true;
+                }
                 newState.EX.wrt_enable=true;
                 newState.EX.Wrt_reg_addr=rd;
             }
@@ -537,7 +542,7 @@ int main()
             newState.ID=state.ID;
             newState.IF=state.IF;
             newState.EX.nop=true;
-            cout<<"Stalling..."<<stall<<endl;
+            cout<<"Stalling..."<<endl;
             stall=false;
         }
 
@@ -576,7 +581,7 @@ int main()
     cout<<"STATS - ";
     cout<<"Number of cycles: "<<cycle<<endl;
     cout<<"Total memory access instructions: "<<daccess<<endl;
-    cout<<"Fraction of instructions accessing memory: "<<daccess/(float)cycle<<endl;
+    cout<<"Fraction of instructions accessing memory: "<<daccess/(float)valid<<endl;
     cout<<"Total number of valid instructions: "<<valid<<endl;
     cout<<"IPC: "<<valid/(float)cycle<<endl;
 
