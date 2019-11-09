@@ -709,6 +709,25 @@ int main()
                     newState.EX.INS = "subu";                    
                     newState.EX.alu_op = 0;      
                 }
+
+                else if (func == "001000"){ //Check condition for JR
+                    newState.IF.PC=newState.EX.Read_data1; //Change PC value to R[Rs]
+                    newState.ID.nop=1;
+
+                    newState.EX.wrt_enable = 0;
+                    //Forward other signals to EX stage
+                    newState.EX.rd_mem = 0;
+                    newState.EX.wrt_mem = 0;
+                    newState.EX.nop = state.ID.nop;
+
+                    //Perform other tasks before continue
+
+                    printState(newState, cycle);
+                    state = newState;
+                    cycle ++;
+                    cout<<"OKNOTOK JR"<<endl;
+                    continue;
+                }
                 
                 newState.EX.wrt_enable = 1;
                 newState.EX.rd_mem = 0;
