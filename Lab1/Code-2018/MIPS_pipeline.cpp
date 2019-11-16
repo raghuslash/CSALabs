@@ -491,10 +491,6 @@ int main()
                 newState.EX.is_I_type=false;
                 if (((bitset <3>) state.ID.Instr.to_ulong()).to_ulong()==3){
                     newState.EX.alu_op=false;
-                    if ((state.EX.Wrt_reg_addr.to_ulong() == newState.EX.Read_data1.to_ulong() || state.EX.Wrt_reg_addr.to_ulong() == newState.EX.Read_data2.to_ulong()) && !state.EX.nop && state.EX.wrt_enable)
-                        stall=true;
-                    else if ((state.MEM.Wrt_reg_addr.to_ulong() == newState.EX.Read_data1.to_ulong() || state.MEM.Wrt_reg_addr.to_ulong() == newState.EX.Read_data2.to_ulong()) && !state.MEM.nop && state.MEM.wrt_enable)
-                         stall=true;
                 }
                 newState.EX.wrt_enable=true;
                 newState.EX.Wrt_reg_addr=rd;
@@ -565,11 +561,15 @@ int main()
 
         printState(newState, cycle); //print states after executing cycle 0, cycle 1, cycle 2 ... 
 
-        state = newState; /*The end of the cycle and updates the current state with the values calculated in this cycle */ 
         if (state.IF.nop && state.ID.nop && state.EX.nop && state.MEM.nop && state.WB.nop){
             cout<<"Ending..."<<endl;
             break;
         }
+
+        state = newState; /*The end of the cycle and updates the current state with the values calculated in this cycle */ 
+
+
+        
         loop--;
         cycle++;
 

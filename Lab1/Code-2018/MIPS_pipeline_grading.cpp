@@ -781,11 +781,11 @@ int main()
         }
         newState.ID.nop = state.IF.nop;
 
+        printState(newState, cycle); //print states after executing cycle 0, cycle 1, cycle 2 ... 
         
         if (state.IF.nop && state.ID.nop && state.EX.nop && state.MEM.nop && state.WB.nop)
             break;
         
-        printState(newState, cycle); //print states after executing cycle 0, cycle 1, cycle 2 ... 
        
         state = newState; //The end of the cycle and updates the current state with the values calculated in this cycle
                 
