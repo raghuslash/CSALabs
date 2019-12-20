@@ -44,7 +44,7 @@ void updateTable(unsigned long pcm, bool taken){
 					pCol.at(pcm) = 0x00;
 
 	}
-	cout<<"Taken is "<< taken <<". Updated to "<<pCol.at(pcm);
+	cout<<"Taken is "<< taken <<". State updated to "<<pCol.at(pcm);
 }
 
 int main (int argc, char** argv) {
@@ -72,21 +72,23 @@ int main (int argc, char** argv) {
 	uint mispred=0;
 	while (!trace.eof()){
 		prediction = predict(pc%nrows);
-		out << prediction;
+		out << prediction << endl;
 		cout<<count<<'\t';
 		cout<< "Predicted:\t" << prediction << '\t';
 		cout<< pc <<":\t"<< taken << '\t';
 		cout<< "BHR:" << bhr <<'\t';
 		updateTable(pc%nrows, taken);
 		updateBhr(taken, k);
-		trace >> std::hex >> pc >> taken;
-		cout<<endl;
 		if (taken != prediction)
 			mispred++;
+		trace >> std::hex >> pc >> taken;
+		cout<<endl;
+
 		count++;
 	};
+	count--;
 
-	cout<<"Misprediction rate is "<<(float)mispred/count*100<<"."<<endl;
+	cout<<"Misprediction rate is "<<(float)mispred/count*100<<"%."<<endl;
 
 	trace.close();	
 	out.close();
